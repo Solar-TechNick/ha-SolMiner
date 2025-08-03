@@ -18,7 +18,7 @@ Three Antminer devices are configured:
 The component integrates with two main APIs:
 
 ### LuxOS Firmware API
-- Base URL: `https://docs.luxor.tech/firmware/api/luxminer/`
+- Base URL: `https://docs.luxor.tech/`
 - Key commands: `enableboard`, `disableboard`, `frequencyset`, `profileset`, `power`, `curtail`
 - Used for direct miner control (power profiles, hashboard management, temperature control)
 

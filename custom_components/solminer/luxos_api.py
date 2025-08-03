@@ -58,10 +58,17 @@ class LuxOSAPI:
             return False
 
     async def _send_command(self, command: str, parameter: str = "") -> Dict[str, Any]:
-        """Send a command to the LuxOS API."""
+        """Send a command to the miner API."""
+        # For S21+ compatibility, try CGMiner API first (port 4028)
+        try:
+            _LOGGER.debug(f"Trying CGMiner API for command: {command}")
+            return await self._send_cgminer_command(command, parameter)
+        except LuxOSAPIError as e:
+            _LOGGER.debug(f"CGMiner API failed: {e}, trying HTTP endpoints")
+        
+        # Fallback to HTTP-based LuxOS API endpoints
         session = await self._get_session()
         
-        # Try different API endpoints and formats
         endpoints = [
             "/cgi-bin/luci/api",
             "/cgi-bin/api.cgi", 
@@ -71,7 +78,6 @@ class LuxOSAPI:
         
         for endpoint in endpoints:
             try:
-                # Format 1: JSON payload
                 payload = {
                     "command": command,
                     "parameter": parameter
@@ -88,70 +94,78 @@ class LuxOSAPI:
                     if response.status == 200:
                         result = await response.json()
                         if "error" not in result:
+                            _LOGGER.debug(f"HTTP API success on {endpoint}")
                             return result
-                        elif endpoint == endpoints[-1]:  # Last endpoint, raise error
+                        elif endpoint == endpoints[-1]:
                             raise LuxOSAPIError(f"API Error: {result['error']}")
                     elif response.status == 404 and endpoint != endpoints[-1]:
-                        continue  # Try next endpoint
+                        continue
                     else:
                         error_text = await response.text()
-                        if endpoint == endpoints[-1]:  # Last endpoint, raise error
+                        if endpoint == endpoints[-1]:
                             raise LuxOSAPIError(f"HTTP {response.status}: {error_text}")
                 
             except aiohttp.ClientError:
-                if endpoint == endpoints[-1]:  # Last endpoint, raise error
-                    raise
-                continue  # Try next endpoint
+                if endpoint == endpoints[-1]:
+                    raise LuxOSAPIError("All HTTP endpoints failed")
+                continue
             except json.JSONDecodeError:
-                if endpoint == endpoints[-1]:  # Last endpoint, raise error
-                    raise
-                continue  # Try next endpoint
+                if endpoint == endpoints[-1]:
+                    raise LuxOSAPIError("Invalid JSON from all HTTP endpoints")
+                continue
         
-        # If we get here, try CGMiner-style API
-        return await self._send_cgminer_command(command, parameter)
+        raise LuxOSAPIError("All API methods failed")
     
     async def _send_cgminer_command(self, command: str, parameter: str = "") -> Dict[str, Any]:
-        """Send a CGMiner-style API command."""
-        session = await self._get_session()
+        """Send a CGMiner-style API command using TCP socket."""
+        import socket
+        import asyncio
         
-        # CGMiner API typically uses port 4028 with socket-like protocol
-        # For HTTP, try different formats
         try:
-            # Format: command+parameters
-            cmd_string = command
-            if parameter:
-                cmd_string += f"+{parameter}"
+            # CGMiner API uses TCP socket on port 4028
+            reader, writer = await asyncio.wait_for(
+                asyncio.open_connection(self.host, 4028),
+                timeout=10.0
+            )
             
-            async with session.get(
-                f"http://{self.host}:4028/{cmd_string}",
-                timeout=aiohttp.ClientTimeout(total=5)
-            ) as response:
-                if response.status == 200:
-                    text = await response.text()
-                    # Try to parse as JSON
-                    try:
-                        return json.loads(text)
-                    except json.JSONDecodeError:
-                        # Return as plain text wrapped in dict
-                        return {"result": text}
-        except aiohttp.ClientError:
-            pass
-        
-        # Final attempt: Basic HTTP endpoint
-        try:
-            async with session.get(
-                f"http://{self.host}/cgi-bin/minerApi.cgi",
-                params={"command": command, "parameter": parameter}
-            ) as response:
-                if response.status == 200:
-                    result = await response.json()
+            # Prepare command
+            cmd_data = {"command": command}
+            if parameter:
+                cmd_data["parameter"] = parameter
+                
+            # Send command as JSON
+            cmd_json = json.dumps(cmd_data).encode() + b'\n'
+            writer.write(cmd_json)
+            await writer.drain()
+            
+            # Read response
+            response_data = await asyncio.wait_for(
+                reader.read(8192),
+                timeout=10.0
+            )
+            
+            # Close connection
+            writer.close()
+            await writer.wait_closed()
+            
+            if response_data:
+                try:
+                    result = json.loads(response_data.decode().strip())
+                    _LOGGER.debug(f"CGMiner API response for {command}: {result}")
                     return result
-                else:
-                    raise LuxOSAPIError(f"HTTP {response.status}: {await response.text()}")
-        except aiohttp.ClientError as err:
-            raise LuxOSAPIError(f"Connection error: {err}")
-        except json.JSONDecodeError as err:
-            raise LuxOSAPIError(f"Invalid JSON response: {err}")
+                except json.JSONDecodeError as e:
+                    # Some responses might not be valid JSON
+                    _LOGGER.warning(f"Invalid JSON from CGMiner API: {response_data[:200]}")
+                    return {"raw_response": response_data.decode()[:1000]}
+            else:
+                raise LuxOSAPIError("No response from CGMiner API")
+                
+        except asyncio.TimeoutError:
+            raise LuxOSAPIError("Timeout connecting to CGMiner API")
+        except ConnectionRefusedError:
+            raise LuxOSAPIError("CGMiner API connection refused (port 4028)")
+        except Exception as err:
+            raise LuxOSAPIError(f"CGMiner API error: {err}")
 
     async def logon(self) -> bool:
         """Authenticate and create a session."""
@@ -184,12 +198,12 @@ class LuxOSAPI:
                 _LOGGER.debug(f"Auth format failed: {e}")
                 continue
         
-        # Try without authentication (some miners don't require it)
+        # Try without authentication (CGMiner API typically doesn't require auth)
         try:
-            _LOGGER.debug("Trying without authentication")
+            _LOGGER.debug("Trying without authentication (CGMiner API)")
             result = await self._send_command("summary")
-            if result:
-                _LOGGER.debug("No authentication required")
+            if result and "STATUS" in result:
+                _LOGGER.debug("CGMiner API working without authentication")
                 return True
         except LuxOSAPIError:
             pass
@@ -246,15 +260,23 @@ class LuxOSAPI:
 
     async def enable_board(self, board_id: int) -> Dict[str, Any]:
         """Enable a specific hashboard."""
-        if not self.session_id:
-            await self.logon()
-        return await self._send_command("enableboard", str(board_id))
+        try:
+            if not self.session_id:
+                await self.logon()
+            return await self._send_command("enableboard", str(board_id))
+        except LuxOSAPIError:
+            # CGMiner API alternative
+            return await self._send_command("ascenable", str(board_id))
 
     async def disable_board(self, board_id: int) -> Dict[str, Any]:
         """Disable a specific hashboard."""
-        if not self.session_id:
-            await self.logon()
-        return await self._send_command("disableboard", str(board_id))
+        try:
+            if not self.session_id:
+                await self.logon()
+            return await self._send_command("disableboard", str(board_id))
+        except LuxOSAPIError:
+            # CGMiner API alternative
+            return await self._send_command("ascdisable", str(board_id))
 
     async def set_frequency(self, frequency: int) -> Dict[str, Any]:
         """Set chip frequency."""
@@ -268,9 +290,24 @@ class LuxOSAPI:
 
     async def set_profile(self, profile: str) -> Dict[str, Any]:
         """Set power profile."""
-        if not self.session_id:
-            await self.logon()
-        return await self._send_command("profileset", profile)
+        # Try LuxOS command first
+        try:
+            if not self.session_id:
+                await self.logon()
+            return await self._send_command("profileset", profile)
+        except LuxOSAPIError:
+            # Fallback for CGMiner API - some miners use different commands
+            try:
+                return await self._send_command("luxset", f"profile,{profile}")
+            except LuxOSAPIError:
+                # Last resort - try frequency adjustment
+                freq_map = {
+                    "+4": "750", "+3": "725", "+2": "700", "+1": "675",
+                    "0": "650", "-1": "625", "-2": "600", "-3": "575", "-4": "550"
+                }
+                if profile in freq_map:
+                    return await self._send_command("ascset", f"0,freq,{freq_map[profile]}")
+                raise
 
     async def get_profile(self) -> Dict[str, Any]:
         """Get current power profile."""
