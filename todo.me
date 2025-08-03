@@ -1,0 +1,76 @@
+Project SolMiner
+  Please build for me a custom Home Assistant component/integration for a solar Mining project called SolMiner.
+    The for the project, I use Antminer "S19j Pro", "s19j Pro+" and "s21+" al antminer are running LuxOS firmware.
+    
+    IMPORTANT Ask questions!
+    
+    Features schuld be similar to:
+        https://github.com/Schnitzel/hass-miner
+        https://docs.pyasic.org
+    you can find the official api documentation:
+        https://docs.luxor.tech/firmware/api/available_commands
+        https://docs.luxor.tech/firmware/api/luxminer/
+
+    ### Mining Control
+- **Pause/Resume**: Instantly disable/enable all hashboards
+- **Solar Max**: Set 4200W and enable miner for maximum solar power utilization
+- **Eco Mode**: Set 1500W for energy-efficient mining
+- **Emergency Stop**: Immediate shutdown of all mining operations
+
+### Power Profiles
+- **Max Power**: +2 overclock profile for peak performance
+- **Balanced**: Default profile for optimal efficiency
+- **Ultra Eco**: -2 underclock profile for minimal power consumption
+- **Manual**:-16 to +4
+
+### Hashboard Control
+- **Individual Board Toggle**: Control boards 0, 1, and 2 independently
+- **Real-time Status**: Monitor temperature, frequency, voltage per board
+- **Smart Automation**: Automatic board management based on solar power
+
+### Real-time Monitoring
+- **Auto-refresh**: Updates every 30-60 seconds
+- **State Colors**: Visual status indicators
+- **Performance Metrics**: Hashrate, power consumption, efficiency
+- **Temperature Monitoring**: Per-board and overall temperature tracking
+
+### Solar Integration
+- **Manual Power Input**: Set available solar power (0-50000W)
+- **Sun Curve Mode**: Automatic power adjustment following sun patterns
+- **Solar Efficiency Gauge**: Visual feedback on solar utilization
+- **Peak Solar Mode**: 120% power during maximum sun availability
+
+### Night Operations
+- **Night Mode (30%)**: Quiet operation at 30% power
+- **Night Mode (15%)**: Ultra-quiet operation at 15% power
+- **Standby Mode**: Complete shutdown for silent nights
+
+### Smart Automation
+- **10-minute Intervals**: Automatic solar power adjustments
+- **Auto Standby**: Automatic shutdown when solar power drops below threshold
+- **Auto Restart**: Automatic restart when solar power exceeds set point
+- **Temperature Protection**: Auto-underclock at 75°C
+- ** threshold must be set each miner Individualy
+### Advanced Controls
+- **Performance Scaling**: 50% to 130% performance adjustment (-16 to +3) 
+- **Custom Power Limits**: Set specific wattage limits
+- **Pool Management**: Switch between mining pools
+- **Mobile Dashboard**: Full control from mobile devices
+
+miner:
+Antminer S19j Pro+  http://192.168.1.210
+Antminer S19j Pro   http://192.168.1.211
+Antminer S21+       http://192.168.1.212
+    
+ 
+ Web research
+    Comparisons with source links
+    Quick fact-checking
+    ask questions
+
+    Test requirements:
+- Place tests in __tests__ directory
+- Test all major functionality
+- Include edge cases and error scenarios
+- Verify computed values update correctly
+- Aim for high code coverage

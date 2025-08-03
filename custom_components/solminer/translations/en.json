@@ -1,0 +1,219 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "SolMiner Configuration",
+        "description": "Configure your SolMiner integration",
+        "data": {
+          "host": "Miner IP Address",
+          "username": "Username",
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the miner",
+      "invalid_auth": "Invalid authentication credentials",
+      "unknown": "Unexpected error occurred"
+    },
+    "abort": {
+      "already_configured": "Device is already configured"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "hashrate_5s": {
+        "name": "Hashrate (5s)"
+      },
+      "hashrate_1m": {
+        "name": "Hashrate (1m)"
+      },
+      "hashrate_15m": {
+        "name": "Hashrate (15m)"
+      },
+      "power_consumption": {
+        "name": "Power Consumption"
+      },
+      "efficiency": {
+        "name": "Power Efficiency"
+      },
+      "temp_avg": {
+        "name": "Average Temperature"
+      },
+      "temp_max": {
+        "name": "Maximum Temperature"
+      },
+      "board_0_temp": {
+        "name": "Board 0 Temperature"
+      },
+      "board_1_temp": {
+        "name": "Board 1 Temperature"
+      },
+      "board_2_temp": {
+        "name": "Board 2 Temperature"
+      },
+      "fan_speed_1": {
+        "name": "Fan 1 Speed"
+      },
+      "fan_speed_2": {
+        "name": "Fan 2 Speed"
+      },
+      "frequency": {
+        "name": "Chip Frequency"
+      },
+      "voltage": {
+        "name": "Board Voltage"
+      },
+      "solar_power_available": {
+        "name": "Solar Power Available"
+      },
+      "solar_utilization": {
+        "name": "Solar Utilization"
+      },
+      "status": {
+        "name": "Miner Status"
+      },
+      "uptime": {
+        "name": "Uptime"
+      }
+    },
+    "switch": {
+      "mining_enabled": {
+        "name": "Mining Enabled"
+      },
+      "board_0_enabled": {
+        "name": "Board 0 Enabled"
+      },
+      "board_1_enabled": {
+        "name": "Board 1 Enabled"
+      },
+      "board_2_enabled": {
+        "name": "Board 2 Enabled"
+      },
+      "solar_curve_enabled": {
+        "name": "Solar Curve Mode"
+      },
+      "auto_power_management": {
+        "name": "Auto Power Management"
+      },
+      "temp_protection_enabled": {
+        "name": "Temperature Protection"
+      }
+    },
+    "number": {
+      "solar_power_input": {
+        "name": "Solar Power Input"
+      },
+      "max_solar_power": {
+        "name": "Max Solar Power"
+      },
+      "power_limit": {
+        "name": "Power Limit"
+      },
+      "performance_scaling": {
+        "name": "Performance Scaling"
+      },
+      "temperature_threshold": {
+        "name": "Temperature Threshold"
+      },
+      "fan_speed_override": {
+        "name": "Fan Speed Override"
+      },
+      "chip_frequency": {
+        "name": "Chip Frequency"
+      }
+    },
+    "select": {
+      "power_profile": {
+        "name": "Power Profile",
+        "state": {
+          "max_power": "Max Power",
+          "balanced": "Balanced",
+          "ultra_eco": "Ultra Eco",
+          "manual": "Manual" 
+        }
+      },
+      "power_mode": {
+        "name": "Power Mode",
+        "state": {
+          "solar_max": "Solar Max",
+          "eco_mode": "Eco Mode",
+          "night_30": "Night 30%",
+          "night_15": "Night 15%",
+          "standby": "Standby"
+        }
+      },
+      "frequency_profile": {
+        "name": "Frequency Profile"
+      },
+      "active_pool": {
+        "name": "Active Mining Pool"
+      },
+      "operating_mode": {
+        "name": "Operating Mode",
+        "state": {
+          "normal": "Normal",
+          "solar_optimized": "Solar Optimized",
+          "night_quiet": "Night Quiet",
+          "eco_mode": "Eco Mode",
+          "max_performance": "Max Performance",
+          "standby": "Standby"
+        }
+      }
+    }
+  },
+  "services": {
+    "emergency_stop": {
+      "name": "Emergency Stop",
+      "description": "Immediately stop all mining operations and set minimum power"
+    },
+    "reboot_miner": {
+      "name": "Reboot Miner", 
+      "description": "Reboot the selected miner device"
+    },
+    "set_solar_mode": {
+      "name": "Set Solar Mode",
+      "description": "Configure the miner for optimal solar power utilization",
+      "fields": {
+        "max_power": {
+          "name": "Maximum Power",
+          "description": "Maximum power to use when solar is available"
+        }
+      }
+    },
+    "set_night_mode": {
+      "name": "Set Night Mode",
+      "description": "Configure the miner for quiet night operation",
+      "fields": {
+        "power_percentage": {
+          "name": "Power Percentage",
+          "description": "Percentage of normal power to use during night mode"
+        }
+      }
+    },
+    "apply_power_profile": {
+      "name": "Apply Power Profile",
+      "description": "Apply a specific power profile to optimize performance or efficiency",
+      "fields": {
+        "profile": {
+          "name": "Power Profile",
+          "description": "The power profile to apply"
+        }
+      }
+    },
+    "control_hashboard": {
+      "name": "Control Hashboard",
+      "description": "Enable or disable individual hashboards",
+      "fields": {
+        "board_id": {
+          "name": "Board ID",
+          "description": "The hashboard to control (0, 1, or 2)"
+        },
+        "enabled": {
+          "name": "Enabled",
+          "description": "Whether to enable or disable the hashboard"
+        }
+      }
+    }
+  }
+}

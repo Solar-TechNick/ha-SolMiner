@@ -1,0 +1,115 @@
+emergency_stop:
+  name: Emergency Stop
+  description: Immediately stop all mining operations and set minimum power.
+  target:
+    device:
+      integration: solminer
+  fields: {}
+
+reboot_miner:
+  name: Reboot Miner
+  description: Reboot the selected miner device.
+  target:
+    device:
+      integration: solminer
+  fields: {}
+
+set_solar_mode:
+  name: Set Solar Mode
+  description: Configure the miner for optimal solar power utilization.
+  target:
+    device:
+      integration: solminer
+  fields:
+    max_power:
+      name: Maximum Power
+      description: Maximum power to use when solar is available.
+      required: true
+      example: 4200
+      selector:
+        number:
+          min: 1000
+          max: 5000
+          step: 100
+          unit_of_measurement: W
+
+set_night_mode:
+  name: Set Night Mode
+  description: Configure the miner for quiet night operation.
+  target:
+    device:
+      integration: solminer
+  fields:
+    power_percentage:
+      name: Power Percentage
+      description: Percentage of normal power to use during night mode.
+      required: true
+      example: 30
+      selector:
+        number:
+          min: 0
+          max: 50
+          step: 5
+          unit_of_measurement: "%"
+
+apply_power_profile:
+  name: Apply Power Profile
+  description: Apply a specific power profile to optimize performance or efficiency.
+  target:
+    device:
+      integration: solminer
+  fields:
+    profile:
+      name: Power Profile
+      description: The power profile to apply.
+      required: true
+      example: "+2"
+      selector:
+        select:
+          options:
+            - "-16"
+            - "-15" 
+            - "-14"
+            - "-13"
+            - "-12"
+            - "-11"
+            - "-10"
+            - "-9"
+            - "-8"
+            - "-7"
+            - "-6"
+            - "-5"
+            - "-4"
+            - "-3"
+            - "-2"
+            - "-1"
+            - "0"
+            - "+1"
+            - "+2"
+            - "+3"
+            - "+4"
+
+control_hashboard:
+  name: Control Hashboard
+  description: Enable or disable individual hashboards.
+  target:
+    device:
+      integration: solminer
+  fields:
+    board_id:
+      name: Board ID
+      description: The hashboard to control (0, 1, or 2).
+      required: true
+      example: 0
+      selector:
+        number:
+          min: 0
+          max: 2
+          step: 1
+    enabled:
+      name: Enabled
+      description: Whether to enable or disable the hashboard.
+      required: true
+      example: true
+      selector:
+        boolean:
