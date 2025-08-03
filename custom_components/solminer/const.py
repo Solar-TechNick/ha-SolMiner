@@ -14,6 +14,17 @@ DEFAULT_USERNAME = "root"
 DEFAULT_PASSWORD = "root"
 DEFAULT_UPDATE_INTERVAL = 30
 
+# Common credential combinations for LuxOS/Antminer devices
+COMMON_CREDENTIALS = [
+    ("root", "root"),      # Most common
+    ("admin", "admin"),    # Alternative admin
+    ("", "root"),          # No username, root password
+    ("root", ""),          # Root username, no password
+    ("admin", ""),         # Admin username, no password  
+    ("", "admin"),         # No username, admin password
+    ("", ""),              # No credentials at all
+]
+
 # Power profiles
 POWER_PROFILES = {
     "max_power": "+2",

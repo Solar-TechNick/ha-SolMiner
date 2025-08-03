@@ -34,18 +34,71 @@ async def validate_input(hass: HomeAssistant, data: Dict[str, Any]) -> Dict[str,
     )
     
     try:
-        # Test connection by getting version info
-        await api.get_version()
+        # Test basic connectivity first
+        _LOGGER.debug(f"Testing connection to {data[CONF_HOST]}")
         
-        # If authentication is required, test login
+        # Try to get basic miner info without authentication first
+        try:
+            summary = await api.get_summary()
+            if summary:
+                _LOGGER.debug("Connected successfully without authentication")
+                return {"title": f"SolMiner {data[CONF_HOST]}"}
+        except LuxOSAPIError:
+            _LOGGER.debug("Basic connection failed, trying with authentication")
+        
+        # Try authentication methods
         login_success = await api.logon()
-        if login_success:
-            await api.logoff()
+        if not login_success:
+            # Try with different common credentials
+            common_creds = [
+                ("root", "root"),
+                ("admin", "admin"),
+                ("", "root"),
+                ("root", ""),
+                ("admin", ""),
+                ("", "admin"),
+            ]
+            
+            for username, password in common_creds:
+                if username != data[CONF_USERNAME] or password != data[CONF_PASSWORD]:
+                    test_api = LuxOSAPI(data[CONF_HOST], username, password)
+                    try:
+                        if await test_api.logon():
+                            _LOGGER.info(f"Authentication successful with {username}:{password}")
+                            await test_api.logoff()
+                            await test_api.close()
+                            # Update the working credentials
+                            data[CONF_USERNAME] = username
+                            data[CONF_PASSWORD] = password
+                            return {"title": f"SolMiner {data[CONF_HOST]}"}
+                    except LuxOSAPIError:
+                        pass
+                    finally:
+                        await test_api.close()
+            
+            raise InvalidAuth("Unable to authenticate with provided or common credentials")
         
+        # Test that we can get miner data
+        try:
+            summary = await api.get_summary()
+            if not summary:
+                raise CannotConnect("Connected but unable to retrieve miner data")
+        except LuxOSAPIError as err:
+            _LOGGER.warning(f"Authentication succeeded but data retrieval failed: {err}")
+            # Don't fail here - some commands might work even if summary doesn't
+        
+        await api.logoff()
         return {"title": f"SolMiner {data[CONF_HOST]}"}
     
     except LuxOSAPIError as err:
-        raise InvalidAuth from err
+        _LOGGER.error(f"Connection/authentication failed: {err}")
+        if "Connection error" in str(err) or "HTTP 404" in str(err):
+            raise CannotConnect from err
+        else:
+            raise InvalidAuth from err
+    except Exception as err:
+        _LOGGER.error(f"Unexpected error during validation: {err}")
+        raise CannotConnect from err
     finally:
         await api.close()
 
