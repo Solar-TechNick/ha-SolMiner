@@ -1,15 +1,15 @@
 {
   "domain": "solminer",
   "name": "SolMiner",
-  "codeowners": ["@user"],
+  "codeowners": ["@Solar-TechNick"],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/user/solminer",
+  "documentation": "https://github.com/Solar-TechNick/ha-SolMiner",
   "homekit": {},
   "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/user/solminer/issues",
-  "requirements": ["aiohttp>=3.8.0"],
+  "issue_tracker": "https://github.com/Solar-TechNick/ha-SolMiner/issues",
+  "requirements": [],
   "ssdp": [],
-  "version": "1.0.0",
+  "version": "1.0.1",
   "zeroconf": []
 }

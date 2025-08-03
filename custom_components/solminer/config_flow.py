@@ -11,7 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
 import homeassistant.helpers.config_validation as cv
 
-from .const import DOMAIN, DEFAULT_USERNAME, DEFAULT_PASSWORD
+from .const import DOMAIN, DEFAULT_USERNAME, DEFAULT_PASSWORD, CONF_HOST, CONF_USERNAME, CONF_PASSWORD
 from .luxos_api import LuxOSAPI, LuxOSAPIError
 
 _LOGGER = logging.getLogger(__name__)
@@ -19,23 +19,31 @@ _LOGGER = logging.getLogger(__name__)
 def validate_ip_or_hostname(value):
     """Validate IP address or hostname."""
     import re
-    # Basic IP validation
-    ip_pattern = r'^(\d{1,3}\.){3}\d{1,3}$'
-    hostname_pattern = r'^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$'
     
-    if re.match(ip_pattern, value):
-        # Validate IP ranges
-        parts = value.split('.')
-        if all(0 <= int(part) <= 255 for part in parts):
+    # Allow simple validation - just check basic format
+    try:
+        # Basic IP validation
+        ip_pattern = r'^(\d{1,3}\.){3}\d{1,3}$'
+        if re.match(ip_pattern, value):
+            parts = value.split('.')
+            if all(0 <= int(part) <= 255 for part in parts):
+                return value
+        
+        # Basic hostname validation  
+        hostname_pattern = r'^[a-zA-Z0-9]([a-zA-Z0-9.-]{0,61}[a-zA-Z0-9])?$'
+        if re.match(hostname_pattern, value):
             return value
-    elif re.match(hostname_pattern, value):
+            
+        # If nothing matches, just return the value - let the connection test handle it
         return value
-    
-    raise vol.Invalid("Invalid IP address or hostname")
+        
+    except Exception:
+        # If validation fails, just return the value
+        return value
 
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
-        vol.Required(CONF_HOST): validate_ip_or_hostname,
+        vol.Required(CONF_HOST): cv.string,
         vol.Optional(CONF_USERNAME, default=DEFAULT_USERNAME): cv.string,
         vol.Optional(CONF_PASSWORD, default=DEFAULT_PASSWORD): cv.string,
     }
@@ -44,11 +52,15 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
 
 async def validate_input(hass: HomeAssistant, data: Dict[str, Any]) -> Dict[str, Any]:
     """Validate the user input allows us to connect."""
-    api = LuxOSAPI(
-        host=data[CONF_HOST],
-        username=data[CONF_USERNAME],
-        password=data[CONF_PASSWORD],
-    )
+    try:
+        api = LuxOSAPI(
+            host=data[CONF_HOST],
+            username=data.get(CONF_USERNAME, DEFAULT_USERNAME),
+            password=data.get(CONF_PASSWORD, DEFAULT_PASSWORD),
+        )
+    except Exception as err:
+        _LOGGER.error(f"Failed to create API client: {err}")
+        raise CannotConnect from err
     
     try:
         # Test basic connectivity first

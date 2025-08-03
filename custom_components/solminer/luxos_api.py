@@ -6,7 +6,10 @@ import json
 import logging
 from typing import Any, Dict, Optional
 
-import aiohttp
+try:
+    import aiohttp
+except ImportError:
+    aiohttp = None
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -24,10 +27,13 @@ class LuxOSAPI:
         self.username = username
         self.password = password
         self.session_id: Optional[str] = None
-        self._session: Optional[aiohttp.ClientSession] = None
+        self._session = None
 
-    async def _get_session(self) -> aiohttp.ClientSession:
+    async def _get_session(self):
         """Get or create HTTP session."""
+        if aiohttp is None:
+            raise LuxOSAPIError("aiohttp not available - using CGMiner API only")
+            
         if self._session is None or self._session.closed:
             self._session = aiohttp.ClientSession(
                 timeout=aiohttp.ClientTimeout(total=15, connect=5),
