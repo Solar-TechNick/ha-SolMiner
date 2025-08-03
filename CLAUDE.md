@@ -15,17 +15,28 @@ Three Antminer devices are configured:
 
 ## API Integration
 
-The component integrates with two main APIs:
+The component uses a dual-API approach for maximum compatibility:
 
-### LuxOS Firmware API
-- Base URL: `https://docs.luxor.tech/`
-- Key commands: `enableboard`, `disableboard`, `frequencyset`, `profileset`, `power`, `curtail`
-- Used for direct miner control (power profiles, hashboard management, temperature control)
+### Primary: CGMiner API (Port 4028)
+- **Protocol**: TCP socket communication on port 4028
+- **Format**: JSON command/response over TCP
+- **Authentication**: None required
+- **Compatibility**: Excellent for S21+ and LuxOS firmware
+- **Commands**: `summary`, `stats`, `devs`, `pools`, `version`, `ascenable`, `ascdisable`
+- **Verified working** with S21+ running LuxOS 2025.7.10.152155
 
-### pyASIC Library Integration
-- Reference implementation: `https://docs.pyasic.org`
-- Provides async standardized interface for ASIC miner control
-- Uses `MinerData` and `MinerConfig` dataclasses for consistent data representation
+### Fallback: LuxOS HTTP API
+- **Protocol**: HTTP POST to various endpoints
+- **Endpoints**: `/cgi-bin/luci/api`, `/cgi-bin/api.cgi`, `/api`
+- **Authentication**: Session-based with `logon`/`logoff`
+- **Commands**: `enableboard`, `disableboard`, `frequencyset`, `profileset`, `power`, `curtail`
+- **Used when**: CGMiner API unavailable or for specific LuxOS features
+
+### API Client Features
+- **Auto-detection**: Tries CGMiner API first, falls back to HTTP
+- **Multiple auth methods**: Supports various credential formats (comma, colon, pipe separators)
+- **Error handling**: Comprehensive timeout and connection error handling
+- **Logging**: Debug logging for troubleshooting API issues
 
 ## Core Features Architecture
 
@@ -45,13 +56,55 @@ The component integrates with two main APIs:
 - **Night Operations**: 30%/15% power modes, complete standby
 - **Temperature Protection**: Auto-underclock at 75°C (configurable per miner)
 
-## Testing Requirements
+## Implementation Details
 
+### File Structure
+```
+custom_components/solminer/
+├── __init__.py           # Integration setup and services
+├── config_flow.py        # UI-based configuration
+├── const.py             # Constants and default values
+├── coordinator.py       # Data coordinator with solar management
+├── luxos_api.py         # Dual API client (CGMiner + HTTP)
+├── manifest.json        # Integration manifest
+├── sensor.py            # Sensor entities (hashrate, temp, power)
+├── switch.py            # Switch entities (mining, boards, automation)
+├── number.py            # Number entities (power limits, scaling)
+├── select.py            # Select entities (profiles, modes)
+├── services.yaml        # Service definitions
+└── translations/        # Localization files
+```
+
+### Key Classes
+- **LuxOSAPI**: Dual-protocol API client with auto-detection
+- **SolMinerCoordinator**: Data coordinator with solar curve simulation
+- **Config Flow**: Robust connection testing with multiple credential attempts
+
+### Troubleshooting
+- **Connection Issues**: Check IP addresses and network connectivity first
+- **500 Server Errors**: Usually config flow validation issues - check Home Assistant logs
+- **Authentication Failures**: Try common credentials (root/root, admin/admin, empty)
+- **S21+ Compatibility**: Uses CGMiner API (port 4028) - verify port is open
+
+### Testing Requirements
 - Place tests in `__tests__` directory
+- Test scripts available: `test_s21_api.py`, `simple_s21_test.py`
 - Test all major functionality including edge cases and error scenarios
 - Verify computed values update correctly
-- Aim for high code coverage
+- S21+ connectivity verified at 192.168.1.212
+
+### Development Commands
+```bash
+# Test S21+ connectivity
+python3 simple_s21_test.py
+
+# Run integration tests  
+pytest __tests__/ -v
+
+# Check Home Assistant logs for debugging
+tail -f /config/home-assistant.log | grep solminer
+```
 
 ## Reference Implementation
 
-The component should follow patterns similar to `https://github.com/Schnitzel/hass-miner` for Home Assistant integration best practices.
+The component follows patterns similar to `https://github.com/Schnitzel/hass-miner` for Home Assistant integration best practices, with enhanced CGMiner API support for better Antminer compatibility.
