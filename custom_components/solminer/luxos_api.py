@@ -30,7 +30,8 @@ class LuxOSAPI:
         """Get or create HTTP session."""
         if self._session is None or self._session.closed:
             self._session = aiohttp.ClientSession(
-                timeout=aiohttp.ClientTimeout(total=10)
+                timeout=aiohttp.ClientTimeout(total=15, connect=5),
+                connector=aiohttp.TCPConnector(limit=10, limit_per_host=10)
             )
         return self._session
 
@@ -40,6 +41,21 @@ class LuxOSAPI:
             await self.logoff()
         if self._session and not self._session.closed:
             await self._session.close()
+
+    async def test_connection(self) -> bool:
+        """Test basic connectivity to the miner."""
+        session = await self._get_session()
+        
+        # Test basic HTTP connectivity
+        try:
+            async with session.get(
+                f"http://{self.host}",
+                timeout=aiohttp.ClientTimeout(total=5)
+            ) as response:
+                return response.status < 500  # Any response (even 404) means it's reachable
+        except Exception as err:
+            _LOGGER.debug(f"Connection test failed: {err}")
+            return False
 
     async def _send_command(self, command: str, parameter: str = "") -> Dict[str, Any]:
         """Send a command to the LuxOS API."""

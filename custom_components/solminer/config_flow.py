@@ -16,9 +16,26 @@ from .luxos_api import LuxOSAPI, LuxOSAPIError
 
 _LOGGER = logging.getLogger(__name__)
 
+def validate_ip_or_hostname(value):
+    """Validate IP address or hostname."""
+    import re
+    # Basic IP validation
+    ip_pattern = r'^(\d{1,3}\.){3}\d{1,3}$'
+    hostname_pattern = r'^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$'
+    
+    if re.match(ip_pattern, value):
+        # Validate IP ranges
+        parts = value.split('.')
+        if all(0 <= int(part) <= 255 for part in parts):
+            return value
+    elif re.match(hostname_pattern, value):
+        return value
+    
+    raise vol.Invalid("Invalid IP address or hostname")
+
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
-        vol.Required(CONF_HOST): cv.string,
+        vol.Required(CONF_HOST): validate_ip_or_hostname,
         vol.Optional(CONF_USERNAME, default=DEFAULT_USERNAME): cv.string,
         vol.Optional(CONF_PASSWORD, default=DEFAULT_PASSWORD): cv.string,
     }
@@ -36,6 +53,9 @@ async def validate_input(hass: HomeAssistant, data: Dict[str, Any]) -> Dict[str,
     try:
         # Test basic connectivity first
         _LOGGER.debug(f"Testing connection to {data[CONF_HOST]}")
+        
+        if not await api.test_connection():
+            raise CannotConnect(f"Cannot reach miner at {data[CONF_HOST]}. Check IP address and network connectivity.")
         
         # Try to get basic miner info without authentication first
         try:
@@ -92,13 +112,16 @@ async def validate_input(hass: HomeAssistant, data: Dict[str, Any]) -> Dict[str,
     
     except LuxOSAPIError as err:
         _LOGGER.error(f"Connection/authentication failed: {err}")
-        if "Connection error" in str(err) or "HTTP 404" in str(err):
+        if any(x in str(err).lower() for x in ["connection", "timeout", "unreachable", "refused", "404", "500"]):
             raise CannotConnect from err
         else:
             raise InvalidAuth from err
     except Exception as err:
         _LOGGER.error(f"Unexpected error during validation: {err}")
-        raise CannotConnect from err
+        if any(x in str(err).lower() for x in ["connection", "timeout", "unreachable", "refused"]):
+            raise CannotConnect from err
+        else:
+            raise InvalidAuth from err
     finally:
         await api.close()
 
